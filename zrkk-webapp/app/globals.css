@@ -800,3 +800,12 @@ select:disabled {
     overscroll-behavior-y: none;
   }
 }
+.duplicate-warning {
+  margin: 6px 0 0;
+  color: #b42318;
+  font-weight: 700;
+}
+.duplicate-name {
+  border-color: #b42318 !important;
+  box-shadow: 0 0 0 1px #b42318;
+}

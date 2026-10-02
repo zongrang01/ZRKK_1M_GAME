@@ -16,7 +16,12 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { initialPlayers } from './staff-roster';
+import {
+  duplicateNames,
+  initialPlayers,
+  nameKey,
+  withoutRetiredDuplicates,
+} from './staff-roster';
 import { CreditBoard, OrgStructure, PlayerDetails } from './game-details';
 import {
   caps,
@@ -177,7 +182,15 @@ const normalizeState = (incoming: State): State => {
   );
   return reconcileMonths({
     ...incoming,
-    players: incoming.players.map((player) => ({
+    history: incoming.history
+      ? Object.fromEntries(
+          Object.entries(incoming.history).map(([month, past]) => [
+            month,
+            { ...past, players: withoutRetiredDuplicates(past.players ?? []) },
+          ]),
+        )
+      : incoming.history,
+    players: withoutRetiredDuplicates(incoming.players).map((player) => ({
       ...player,
       role:
         player.role === 'Graphic Designer & AI Expert'
@@ -317,7 +330,13 @@ export default function DashboardApp() {
     const t = setInterval(load, 5000);
     return () => clearInterval(t);
   }, [load]);
+  const duplicates = useMemo(() => duplicateNames(data.players), [data.players]);
   const save = async () => {
+    if (duplicates.size && access.canManageKpi) {
+      setTab('players');
+      setMessage('มีชื่อพนักงานซ้ำกัน กรุณาแก้ชื่อที่ซ้ำใน KPI รายบุคคลก่อนบันทึก');
+      return;
+    }
     setSaving(true);
     const revision = editVersion.current;
     setMessage('');
@@ -1340,6 +1359,18 @@ export default function DashboardApp() {
                           ? 'สิทธิ์พนักงาน · กรอกได้เฉพาะ Actual และหลักฐานของตัวเอง'
                           : 'ยังไม่ได้ผูกอีเมลกับพนักงาน · ดูข้อมูลได้ แต่ยังกรอก KPI ไม่ได้'}
                     </p>
+                    {duplicates.size > 0 && (
+                      <p role="alert" className="duplicate-warning">
+                        ชื่อซ้ำกัน: {data.players
+                          .filter((p, i, all) =>
+                            duplicates.has(nameKey(p.name)) &&
+                            all.findIndex((q) => nameKey(q.name) === nameKey(p.name)) === i,
+                          )
+                          .map((p) => p.name.trim())
+                          .join(', ')}{' '}
+                        · 1 คนควรมีได้ชื่อเดียวใน KPI รายบุคคล
+                      </p>
+                    )}
                   </div>
                   {access.canManageKpi && (
                     <Button
@@ -1390,6 +1421,12 @@ export default function DashboardApp() {
                             <Input
                               readOnly={!access.canManageKpi}
                               value={p.name}
+                              aria-invalid={duplicates.has(nameKey(p.name)) || undefined}
+                              className={
+                                duplicates.has(nameKey(p.name))
+                                  ? 'duplicate-name'
+                                  : undefined
+                              }
                               placeholder="ชื่อพนักงาน"
                               onChange={(e) =>
                                 patchPlayer(p.id, 'name', e.target.value)

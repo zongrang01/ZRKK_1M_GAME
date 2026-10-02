@@ -156,6 +156,32 @@ assert.equal(mergedPlayers[0].kpis[0].actual, 7);
 assert.equal(mergedPlayers[0].kpis[0].notes, 'proof');
 assert.equal(mergedPlayers[0].roleScore, 7);
 assert.equal(mergedPlayers[1].kpis[0].actual, 2);
+const rosterModule = { exports: {} };
+vm.runInNewContext(
+  ts.transpileModule(fs.readFileSync('app/staff-roster.ts', 'utf8'), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS },
+  }).outputText,
+  { exports: rosterModule.exports, module: rosterModule },
+);
+const { initialPlayers, withoutRetiredDuplicates, duplicateNames } =
+  rosterModule.exports;
+assert.equal(initialPlayers.length, 9);
+assert.equal(duplicateNames(initialPlayers).size, 0);
+assert.equal(
+  initialPlayers.find((p) => p.name === 'Fa').role,
+  'Branding Consultant / Trainer',
+);
+const legacyRoster = [
+  { id: 'staff-0-vee', name: 'Vee' },
+  { id: 'staff-1-vee', name: 'Vee' },
+  { id: 'staff-3-pooh', name: 'Pooh' },
+  { id: 'custom', name: ' vee ' },
+];
+assert.deepEqual(
+  withoutRetiredDuplicates(legacyRoster).map((p) => p.id),
+  ['staff-0-vee', 'staff-3-pooh', 'custom'],
+);
+assert.deepEqual(Array.from(duplicateNames(legacyRoster)), ['vee']);
 console.log(
-  'Passed: 8 role templates, score boundaries, month carry-forward, revenue total, and manager/employee access rules.',
+  'Passed: 8 role templates, score boundaries, month carry-forward, revenue total, manager/employee access rules, and unique roster names.',
 );
