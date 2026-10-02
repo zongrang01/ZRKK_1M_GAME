@@ -1,0 +1,55 @@
+.link-player {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  z-index: 50;
+  display: grid;
+  gap: 8px;
+  box-sizing: border-box;
+  max-width: 520px;
+  margin-inline: auto;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--card);
+  color: var(--foreground);
+  box-shadow: 0 10px 30px rgb(23 50 77 / 0.18);
+}
+.link-player label {
+  display: block;
+  min-width: 0;
+  font-weight: 700;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.link-player-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  min-width: 0;
+}
+.link-player select {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--input);
+  border-radius: 10px;
+  background: var(--card);
+}
+.link-player button {
+  padding: 10px 18px;
+  border-radius: 10px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-weight: 700;
+}
+.link-player button:disabled {
+  opacity: 0.5;
+}
+.link-player-error {
+  margin: 0;
+  color: #b42318;
+  font-size: 13px;
+}

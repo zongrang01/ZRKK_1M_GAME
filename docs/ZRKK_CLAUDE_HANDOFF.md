@@ -82,3 +82,12 @@ The app was made installable on phones as a PWA. Details in `outputs/ZRKK_MOBILE
 - Fixed `public/sw.js`: build assets are served from `/_next/static/` (not `/assets/`), and the offline page is cached as `/offline`, because Cloudflare static assets redirect `/offline.html` → `/offline` and a redirected response can't answer a navigation.
 - `pnpm-workspace.yaml`: filled in the `allowBuilds` placeholders (esbuild/workerd true, sharp false) so `pnpm install` runs the required postinstall steps.
 - Tested in headless Chromium with Pixel 7 / iPhone 13 emulation: no horizontal scroll, service worker registers and takes control, offline fallback page shows when the network is down.
+
+## Update 2026-10-02 — Published as a Claude artifact
+
+- Live: https://claude.ai/artifact/KduzDGAuZfWBdBHYQvn5MG (private until shared from its Share menu).
+- Build: `pnpm build:artifact` → `dist-artifact/zrkk-1m-game.html`, a single inlined page. Republish that file to the same URL.
+- `artifact/backend.ts` answers the dashboard's `/api/state` and `/api/me` calls from the artifact's shared `db` document `app/zrkk`, so `app/dashboard-app.tsx` is unchanged. Defaults moved to `app/state-defaults.ts` (used by both backends).
+- Access in the artifact: the owner and anyone shared as **Editor** are managers. Anyone shared as **Contributor** picks their own player once (`artifact/link-player.tsx`; the link is stored privately at `data/users/<id>/profile`) and can then save only Actual and Notes on that player.
+- Limitation: the artifact merge is client-side; the db cannot enforce per-field limits like the Cloudflare route does, so a Contributor with technical skill could write the whole state document. Share as Viewer for read-only people.
+- The claude.ai `email` scope is not available on this account, so email-based matching from `access.ts` is not used in the artifact.
