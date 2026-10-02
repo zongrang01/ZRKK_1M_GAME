@@ -163,9 +163,21 @@ vm.runInNewContext(
   }).outputText,
   { exports: rosterModule.exports, module: rosterModule },
 );
-const { initialPlayers, withoutRetiredDuplicates, duplicateNames } =
+const { initialPlayers, withoutRetiredDuplicates, duplicateNames, seedRoster } =
   rosterModule.exports;
-assert.equal(initialPlayers.length, 9);
+assert.equal(initialPlayers.length, 10);
+assert.equal(
+  initialPlayers.find((p) => p.name === 'Bumm').role,
+  'Graphic Designer / Contents Creator & AI Expert',
+);
+const fresh = seedRoster({ players: [] });
+assert.equal(fresh.state.players.length, 10);
+const seededBefore = seedRoster({
+  players: [{ id: 'staff-0-jane', name: 'Jane' }],
+  staffRoster20260922: true,
+});
+assert.equal(seededBefore.state.players.map((p) => p.name).join(','), 'Jane,Bumm');
+assert.equal(seedRoster(seededBefore.state).changed, false);
 assert.equal(duplicateNames(initialPlayers).size, 0);
 assert.equal(
   initialPlayers.find((p) => p.name === 'Fa').role,
@@ -183,5 +195,5 @@ assert.deepEqual(
 );
 assert.deepEqual(Array.from(duplicateNames(legacyRoster)), ['vee']);
 console.log(
-  'Passed: 8 role templates, score boundaries, month carry-forward, revenue total, manager/employee access rules, and unique roster names.',
+  'Passed: 8 role templates, score boundaries, month carry-forward, revenue total, manager/employee access rules, and unique roster names with seeded additions.',
 );

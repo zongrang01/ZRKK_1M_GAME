@@ -1,5 +1,5 @@
 import { env } from 'cloudflare:workers';
-import { initialPlayers } from '../../staff-roster';
+import { seedRoster } from '../../staff-roster';
 import { accessFor, mergeEmployeeKpiUpdates } from '../../access';
 import { defaults } from '../../state-defaults';
 type StoredState = {
@@ -14,24 +14,11 @@ export async function GET() {
     .bind('zrkk')
     .first<{ value: string }>();
   const state = row ? JSON.parse(row.value) : defaults;
-  // Seed once; subsequent name edits are preserved, including intentionally blank names.
-  if (!state.staffRoster20260922) {
-    const players = Array.isArray(state.players) ? state.players : [];
-    const additions = initialPlayers.filter(
-      (seed) =>
-        !players.some(
-          (p: { name: string; role: string }) =>
-            p.name.trim().toLowerCase() === seed.name.toLowerCase() &&
-            p.role === seed.role,
-        ),
-    );
+  // Each roster seed runs once; later name edits are preserved, including intentionally blank names.
+  const roster = seedRoster(state);
+  if (roster.changed) {
     const updatedAt = new Date().toISOString();
-    const seeded = {
-      ...state,
-      players: [...players, ...additions],
-      staffRoster20260922: true,
-      updatedAt,
-    };
+    const seeded = { ...roster.state, updatedAt };
     if (row)
       await env.DB.prepare(
         'UPDATE app_state SET value = ?, updated_at = ? WHERE key = ? AND value = ?',

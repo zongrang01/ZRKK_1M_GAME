@@ -2,7 +2,7 @@
 // requests from the artifact's shared `db` document and the viewer's
 // claude.ai account, so dashboard-app.tsx runs unchanged.
 import { mergeEmployeeKpiUpdates } from '../app/access';
-import { initialPlayers } from '../app/staff-roster';
+import { seedRoster } from '../app/staff-roster';
 import { defaults } from '../app/state-defaults';
 
 type StoredState = {
@@ -50,21 +50,9 @@ function subscribe(): Promise<void> {
   return ready;
 }
 
-// Same one-time roster seed as the Cloudflare route, applied in memory; it is
+// Same roster seeds as the Cloudflare route, applied in memory; they are
 // stored the first time someone saves.
-function withRoster(state: StoredState): StoredState {
-  if (state.staffRoster20260922) return state;
-  const players = Array.isArray(state.players) ? state.players : [];
-  const additions = initialPlayers.filter(
-    (seed) =>
-      !players.some(
-        (p) =>
-          String(p.name ?? '').trim().toLowerCase() === seed.name.toLowerCase() &&
-          p.role === seed.role,
-      ),
-  );
-  return { ...state, players: [...players, ...additions], staffRoster20260922: true };
-}
+const withRoster = (state: StoredState) => seedRoster(state).state;
 
 // Managers are the artifact's owner and anyone it is shared with as Editor.
 // Everyone else is an employee, linked once to their own player record; the

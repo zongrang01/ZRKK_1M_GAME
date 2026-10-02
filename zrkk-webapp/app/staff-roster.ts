@@ -3,7 +3,7 @@ export const staffRoster = [
   ['Head of Marketing', ['Pooh', 'Vee']],
   [
     'Graphic Designer / Contents Creator & AI Expert',
-    ['Nueng', 'Kaew', 'Aeaw'],
+    ['Nueng', 'Kaew', 'Aeaw', 'Bumm'],
   ],
   ['Production', ['Fa', 'Pooh', 'Kaew']],
   ['Branding Consultant / Trainer', ['Fa']],
@@ -73,4 +73,32 @@ export function duplicateNames(players: Array<{ name: string }>) {
       .filter(([, n]) => n > 1)
       .map(([key]) => key),
   );
+}
+
+// Roster seeds, each applied once per stored state so later renames and
+// deletions stick. Add a new step (new flag) to add people to live data.
+const rosterSeeds: Array<{ flag: string; ids?: string[] }> = [
+  { flag: 'staffRoster20260922' },
+  { flag: 'staffRoster20261002', ids: ['staff-2-bumm'] },
+];
+
+export function seedRoster<S extends { players?: unknown }>(
+  state: S,
+): { state: S; changed: boolean } {
+  let players = (Array.isArray(state.players) ? state.players : []) as Array<{
+    id?: unknown;
+    name?: unknown;
+  }>;
+  const flags: Record<string, true> = {};
+  for (const { flag, ids } of rosterSeeds) {
+    if ((state as Record<string, unknown>)[flag]) continue;
+    const taken = new Set(players.map((p) => nameKey(String(p.name ?? ''))));
+    const additions = initialPlayers.filter(
+      (seed) => (!ids || ids.includes(seed.id)) && !taken.has(nameKey(seed.name)),
+    );
+    players = [...players, ...additions];
+    flags[flag] = true;
+  }
+  if (!Object.keys(flags).length) return { state, changed: false };
+  return { state: { ...state, players, ...flags }, changed: true };
 }
