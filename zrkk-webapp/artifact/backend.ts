@@ -82,6 +82,14 @@ export async function isManager() {
   return Boolean(owner || editor);
 }
 
+// Whether this viewer may change shared data under the artifact's db rules
+// (only the owner and Editors once write is raised to "admin").
+export async function canWriteData() {
+  const user = await userPromise;
+  if (!user) return false;
+  return (await user.can('data.write')) !== false;
+}
+
 export async function rosterPlayers() {
   await subscribe().catch(() => undefined);
   return withRoster(latest ?? (defaults as StoredState)).players.map((p) => ({

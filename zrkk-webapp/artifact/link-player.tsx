@@ -1,7 +1,13 @@
 // One-time "who are you" bar for employees: links this claude.ai account to
 // a player record so they can update their own Actual and Notes.
 import { useEffect, useState } from 'react';
-import { isManager, linkPlayer, linkedPlayerId, rosterPlayers } from './backend';
+import {
+  canWriteData,
+  isManager,
+  linkPlayer,
+  linkedPlayerId,
+  rosterPlayers,
+} from './backend';
 
 type RosterPlayer = { id: string; name: string; role: string };
 
@@ -12,7 +18,8 @@ export default function LinkPlayer() {
 
   useEffect(() => {
     (async () => {
-      if ((await isManager()) || (await linkedPlayerId())) return;
+      if ((await isManager()) || !(await canWriteData()) || (await linkedPlayerId()))
+        return;
       setPlayers((await rosterPlayers()).filter((p) => p.name.trim()));
     })().catch(() => undefined);
   }, []);
