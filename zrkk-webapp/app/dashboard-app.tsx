@@ -261,6 +261,49 @@ const teamLevel = (r: number) =>
         : r >= 800000
           ? 'Bronze'
           : 'Below Bronze';
+// Baht amount field: digits only, no leading zeros, thousands separators.
+function MoneyInput({
+  value,
+  onValue,
+}: {
+  value: number;
+  onValue: (value: number) => void;
+}) {
+  return (
+    <Input
+      type="text"
+      inputMode="numeric"
+      value={value ? money(value) : ''}
+      placeholder="0"
+      onChange={(event) =>
+        onValue(Number(event.target.value.replace(/\D/g, '')) || 0)
+      }
+    />
+  );
+}
+// Incharge picker: names from KPI รายบุคคล, keeping a saved name not in the list.
+function InchargeSelect({
+  value,
+  names,
+  onValue,
+}: {
+  value: string;
+  names: string[];
+  onValue: (value: string) => void;
+}) {
+  const options =
+    value.trim() && !names.includes(value) ? [value, ...names] : names;
+  return (
+    <select value={value} onChange={(event) => onValue(event.target.value)}>
+      <option value="">เลือกหัวหน้างาน</option>
+      {options.map((name) => (
+        <option key={name} value={name}>
+          {name}
+        </option>
+      ))}
+    </select>
+  );
+}
 export default function DashboardApp() {
   const [data, setRawData] = useState(initial);
   const setData = (action: State | ((state: State) => State)) => {
@@ -331,6 +374,13 @@ export default function DashboardApp() {
     return () => clearInterval(t);
   }, [load]);
   const duplicates = useMemo(() => duplicateNames(data.players), [data.players]);
+  const teamNames = useMemo(
+    () =>
+      Array.from(
+        new Set(data.players.map((p) => p.name.trim()).filter(Boolean)),
+      ),
+    [data.players],
+  );
   const save = async () => {
     if (duplicates.size && access.canManageKpi) {
       setTab('players');
@@ -860,15 +910,11 @@ export default function DashboardApp() {
                           </label>
                           <label className="field-label">
                             Incharge (หัวหน้างาน)
-                            <Input
+                            <InchargeSelect
                               value={mission.owner}
-                              placeholder="ชื่อหัวหน้างาน"
-                              onChange={(event) =>
-                                patchMission(
-                                  mission.id,
-                                  'owner',
-                                  event.target.value,
-                                )
+                              names={teamNames}
+                              onValue={(value) =>
+                                patchMission(mission.id, 'owner', value)
                               }
                             />
                           </label>
@@ -1140,31 +1186,19 @@ export default function DashboardApp() {
                             <>
                               <label className="field-label">
                                 เป้ายอดขาย (บาท)
-                                <Input
-                                  type="number"
-                                  min="0"
+                                <MoneyInput
                                   value={mission.target}
-                                  onChange={(event) =>
-                                    patchMission(
-                                      mission.id,
-                                      'target',
-                                      Math.max(0, +event.target.value),
-                                    )
+                                  onValue={(value) =>
+                                    patchMission(mission.id, 'target', value)
                                   }
                                 />
                               </label>
                               <label className="field-label">
                                 ยอดขายจริง (บาท)
-                                <Input
-                                  type="number"
-                                  min="0"
+                                <MoneyInput
                                   value={mission.actual}
-                                  onChange={(event) =>
-                                    patchMission(
-                                      mission.id,
-                                      'actual',
-                                      Math.max(0, +event.target.value),
-                                    )
+                                  onValue={(value) =>
+                                    patchMission(mission.id, 'actual', value)
                                   }
                                 />
                               </label>
@@ -1237,15 +1271,11 @@ export default function DashboardApp() {
                       </label>
                       <label className="field-label">
                         Incharge (หัวหน้างาน)
-                        <Input
+                        <InchargeSelect
                           value={customer.owner ?? ''}
-                          placeholder="ชื่อหัวหน้างาน"
-                          onChange={(event) =>
-                            patchCustomer(
-                              customer.id,
-                              'owner',
-                              event.target.value,
-                            )
+                          names={teamNames}
+                          onValue={(value) =>
+                            patchCustomer(customer.id, 'owner', value)
                           }
                         />
                       </label>
@@ -1291,31 +1321,19 @@ export default function DashboardApp() {
                       <div className="consult-funnel">
                         <label className="field-label">
                           เป้ายอดขายลูกค้าเก่า (บาท)
-                          <Input
-                            type="number"
-                            min="0"
+                          <MoneyInput
                             value={customer.target ?? 0}
-                            onChange={(e) =>
-                              patchCustomer(
-                                customer.id,
-                                'target',
-                                Math.max(0, +e.target.value),
-                              )
+                            onValue={(value) =>
+                              patchCustomer(customer.id, 'target', value)
                             }
                           />
                         </label>
                         <label className="field-label">
                           ยอดขายจริงลูกค้าเก่า (บาท)
-                          <Input
-                            type="number"
-                            min="0"
+                          <MoneyInput
                             value={customer.actual ?? 0}
-                            onChange={(e) =>
-                              patchCustomer(
-                                customer.id,
-                                'actual',
-                                Math.max(0, +e.target.value),
-                              )
+                            onValue={(value) =>
+                              patchCustomer(customer.id, 'actual', value)
                             }
                           />
                         </label>
