@@ -811,13 +811,16 @@ select:disabled {
 }
 .period-filters {
   display: flex;
-  flex-wrap: wrap;
   align-items: stretch;
-  gap: 10px;
+  gap: 8px;
+  min-width: 0;
+}
+.period-filters .month-control {
+  flex: 0 0 auto;
 }
 .customer-filter {
   display: flex;
-  flex: 1 1 220px;
+  flex: 0 1 220px;
   min-width: 0;
   align-items: center;
   gap: 8px;
@@ -851,4 +854,22 @@ select:disabled {
 .customer-filter input::-webkit-search-cancel-button {
   -webkit-appearance: none;
   appearance: none;
+}
+@media (max-width: 640px) {
+  .period-filters .month-control {
+    gap: 4px;
+    padding-inline: 10px 6px;
+  }
+  .period-filters .month-control input {
+    width: 128px;
+    padding-inline: 4px;
+  }
+  .period-filters .month-control > svg {
+    display: none;
+  }
+  .customer-filter {
+    flex: 1 1 0;
+    gap: 4px;
+    padding-inline: 8px 4px;
+  }
 }

@@ -651,7 +651,7 @@ export default function DashboardApp() {
                     id="customer-filter"
                     type="search"
                     value={customerFilter}
-                    placeholder="ค้นหาชื่อลูกค้า"
+                    placeholder="ค้นหาลูกค้า"
                     onChange={(e) => setCustomerFilter(e.target.value)}
                   />
                   {customerFilter && (
