@@ -9,6 +9,8 @@ import {
   CircleDollarSign,
   Plus,
   Save,
+  Search,
+  X,
   Settings2,
   Sparkles,
   Target,
@@ -261,6 +263,19 @@ const teamLevel = (r: number) =>
         : r >= 800000
           ? 'Bronze'
           : 'Below Bronze';
+// Customer filter: a mission matches by its customer names or any target
+// company; an existing customer matches by name. Empty query matches all.
+const filterKey = (text: string) => text.trim().toLowerCase();
+const prospectMatches = (prospect: Prospect, query: string) =>
+  !query || filterKey(prospect.company).includes(query);
+const missionMatches = (mission: Mission, query: string) =>
+  !query ||
+  filterKey(mission.customerNames ?? '').includes(query) ||
+  (mission.prospects ?? []).some((prospect) =>
+    prospectMatches(prospect, query),
+  );
+const customerMatches = (customer: Customer, query: string) =>
+  !query || filterKey(customer.name).includes(query);
 // Baht amount field: digits only, no leading zeros, thousands separators.
 function MoneyInput({
   value,
@@ -318,6 +333,8 @@ export default function DashboardApp() {
     'dashboard' | 'missions' | 'players' | 'setup'
   >('dashboard');
   const [saving, setSaving] = useState(false);
+  const [customerFilter, setCustomerFilter] = useState('');
+  const customerQuery = filterKey(customerFilter);
   const [selectedPlayer, setSelectedPlayer] = useState<string>();
   const [live, setLive] = useState(false);
   const [access, setAccess] = useState({
@@ -373,7 +390,13 @@ export default function DashboardApp() {
     const t = setInterval(load, 5000);
     return () => clearInterval(t);
   }, [load]);
-  const duplicates = useMemo(() => duplicateNames(data.players), [data.players]);
+  const duplicates = useMemo(
+    () => duplicateNames(data.players),
+    [data.players],
+  );
+  const filteredCustomers = data.customers.filter((customer) =>
+    customerMatches(customer, customerQuery),
+  );
   const teamNames = useMemo(
     () =>
       Array.from(
@@ -610,15 +633,39 @@ export default function DashboardApp() {
                       : 'ตั้งค่าระบบ'}
               </h2>
             </div>
-            <label className="month-control">
-              <span>เดือน</span>
-              <Input
-                type="month"
-                value={data.month}
-                onChange={(e) => switchMonth(e.target.value)}
-              />
-              <ChevronDown className="size-4" />
-            </label>
+            <div className="period-filters">
+              <label className="month-control">
+                <span>เดือน</span>
+                <Input
+                  type="month"
+                  value={data.month}
+                  onChange={(e) => switchMonth(e.target.value)}
+                />
+                <ChevronDown className="size-4" />
+              </label>
+              {(tab === 'dashboard' || tab === 'missions') && (
+                <label className="customer-filter">
+                  <Search className="size-4" aria-hidden="true" />
+                  <span className="sr-only">ค้นหาชื่อลูกค้า</span>
+                  <input
+                    id="customer-filter"
+                    type="search"
+                    value={customerFilter}
+                    placeholder="ค้นหาชื่อลูกค้า"
+                    onChange={(e) => setCustomerFilter(e.target.value)}
+                  />
+                  {customerFilter && (
+                    <button
+                      type="button"
+                      aria-label="ล้างคำค้นหา"
+                      onClick={() => setCustomerFilter('')}
+                    >
+                      <X className="size-4" />
+                    </button>
+                  )}
+                </label>
+              )}
+            </div>
           </div>
           {message && (
             <p role="status" className="save-message">
@@ -750,7 +797,9 @@ export default function DashboardApp() {
                     'Branding & Marketing Strategy',
                   ].map((type) => {
                     const missions = data.missions.filter(
-                      (mission) => mission.type === type,
+                      (mission) =>
+                        mission.type === type &&
+                        missionMatches(mission, customerQuery),
                     );
                     const actual = missions.reduce(
                       (total, mission) => total + mission.actual,
@@ -794,7 +843,7 @@ export default function DashboardApp() {
                       <span>
                         ฿
                         {money(
-                          data.customers.reduce(
+                          filteredCustomers.reduce(
                             (sum, c) => sum + (c.actual ?? 0),
                             0,
                           ),
@@ -803,7 +852,7 @@ export default function DashboardApp() {
                     </div>
                     <div className="mission-numbers">
                       <span>
-                        {data.customers.reduce(
+                        {filteredCustomers.reduce(
                           (total, customer) =>
                             total +
                             customer.visits +
@@ -812,7 +861,7 @@ export default function DashboardApp() {
                           0,
                         )}
                       </span>
-                      <small>กิจกรรม / {data.customers.length} ลูกค้า</small>
+                      <small>กิจกรรม / {filteredCustomers.length} ลูกค้า</small>
                     </div>
                   </div>
                 </div>
@@ -849,6 +898,7 @@ export default function DashboardApp() {
                         variant="outline"
                         onClick={() => {
                           dirty.current = true;
+                          setCustomerFilter('');
                           setData((d) => ({
                             ...d,
                             missions: [
@@ -877,7 +927,11 @@ export default function DashboardApp() {
                   </div>
                   <div className="mission-edit-grid">
                     {data.missions
-                      .filter((mission) => mission.type === group.type)
+                      .filter(
+                        (mission) =>
+                          mission.type === group.type &&
+                          missionMatches(mission, customerQuery),
+                      )
                       .map((mission) => (
                         <div className="mission-edit-card" key={mission.id}>
                           <label className="field-label">
@@ -1067,6 +1121,7 @@ export default function DashboardApp() {
                                   variant="outline"
                                   onClick={() => {
                                     dirty.current = true;
+                                    setCustomerFilter('');
                                     patchMission(mission.id, 'prospects', [
                                       ...(mission.prospects ?? []),
                                       {
@@ -1089,92 +1144,96 @@ export default function DashboardApp() {
                                 ใช้ติดตามงานรายบริษัท แล้วอัปเดตยอดสะสมด้านบนให้ตรงกัน
                               </p>
                               <div className="customer-grid">
-                                {(mission.prospects ?? []).map((prospect) => {
-                                  const update = (
-                                    key: keyof Prospect,
-                                    value: string,
-                                  ) =>
-                                    patchMission(
-                                      mission.id,
-                                      'prospects',
-                                      (mission.prospects ?? []).map((p) =>
-                                        p.id === prospect.id
-                                          ? { ...p, [key]: value }
-                                          : p,
-                                      ),
-                                    );
-                                  return (
-                                    <div
-                                      className="customer-card"
-                                      key={prospect.id}
-                                    >
-                                      {(
-                                        [
-                                          ['company', 'ชื่อบริษัท'],
-                                          ['sourcedBy', 'ผู้หาลูกค้ามา'],
-                                          ['owner', 'ผู้รับผิดชอบติดตาม'],
-                                        ] as const
-                                      ).map(([key, label]) => (
-                                        <label
-                                          className="field-label"
-                                          key={key}
-                                        >
-                                          {label}
-                                          <Input
-                                            value={prospect[key]}
+                                {(mission.prospects ?? [])
+                                  .filter((prospect) =>
+                                    prospectMatches(prospect, customerQuery),
+                                  )
+                                  .map((prospect) => {
+                                    const update = (
+                                      key: keyof Prospect,
+                                      value: string,
+                                    ) =>
+                                      patchMission(
+                                        mission.id,
+                                        'prospects',
+                                        (mission.prospects ?? []).map((p) =>
+                                          p.id === prospect.id
+                                            ? { ...p, [key]: value }
+                                            : p,
+                                        ),
+                                      );
+                                    return (
+                                      <div
+                                        className="customer-card"
+                                        key={prospect.id}
+                                      >
+                                        {(
+                                          [
+                                            ['company', 'ชื่อบริษัท'],
+                                            ['sourcedBy', 'ผู้หาลูกค้ามา'],
+                                            ['owner', 'ผู้รับผิดชอบติดตาม'],
+                                          ] as const
+                                        ).map(([key, label]) => (
+                                          <label
+                                            className="field-label"
+                                            key={key}
+                                          >
+                                            {label}
+                                            <Input
+                                              value={prospect[key]}
+                                              onChange={(e) =>
+                                                update(key, e.target.value)
+                                              }
+                                            />
+                                          </label>
+                                        ))}
+                                        <label className="field-label">
+                                          สถานะ
+                                          <select
+                                            value={prospect.status}
                                             onChange={(e) =>
-                                              update(key, e.target.value)
+                                              update('status', e.target.value)
+                                            }
+                                          >
+                                            {[
+                                              'ยังไม่ได้ติดต่อ',
+                                              'คุยความต้องการแล้ว',
+                                              'ส่งข้อเสนอแล้ว',
+                                              'รอตัดสินใจ',
+                                              'ปิดขายได้',
+                                              'ยังไม่สนใจ',
+                                            ].map((status) => (
+                                              <option key={status}>
+                                                {status}
+                                              </option>
+                                            ))}
+                                          </select>
+                                        </label>
+                                        <label className="field-label">
+                                          วันติดตามครั้งถัดไป
+                                          <Input
+                                            type="date"
+                                            value={prospect.nextFollowUp}
+                                            onChange={(e) =>
+                                              update(
+                                                'nextFollowUp',
+                                                e.target.value,
+                                              )
                                             }
                                           />
                                         </label>
-                                      ))}
-                                      <label className="field-label">
-                                        สถานะ
-                                        <select
-                                          value={prospect.status}
-                                          onChange={(e) =>
-                                            update('status', e.target.value)
-                                          }
-                                        >
-                                          {[
-                                            'ยังไม่ได้ติดต่อ',
-                                            'คุยความต้องการแล้ว',
-                                            'ส่งข้อเสนอแล้ว',
-                                            'รอตัดสินใจ',
-                                            'ปิดขายได้',
-                                            'ยังไม่สนใจ',
-                                          ].map((status) => (
-                                            <option key={status}>
-                                              {status}
-                                            </option>
-                                          ))}
-                                        </select>
-                                      </label>
-                                      <label className="field-label">
-                                        วันติดตามครั้งถัดไป
-                                        <Input
-                                          type="date"
-                                          value={prospect.nextFollowUp}
-                                          onChange={(e) =>
-                                            update(
-                                              'nextFollowUp',
-                                              e.target.value,
-                                            )
-                                          }
-                                        />
-                                      </label>
-                                      <label className="field-label">
-                                        หมายเหตุ
-                                        <Input
-                                          value={prospect.notes}
-                                          onChange={(e) =>
-                                            update('notes', e.target.value)
-                                          }
-                                        />
-                                      </label>
-                                    </div>
-                                  );
-                                })}
+                                        <label className="field-label">
+                                          หมายเหตุ
+                                          <Input
+                                            value={prospect.notes}
+                                            onChange={(e) =>
+                                              update('notes', e.target.value)
+                                            }
+                                          />
+                                        </label>
+                                      </div>
+                                    );
+                                  })}
                                 {!mission.prospects?.length && (
                                   <p className="mission-help">
                                     ยังไม่มีรายชื่อ กด “เพิ่มรายชื่อ” เพื่อเริ่มติดตามลูกค้า
@@ -1233,6 +1292,7 @@ export default function DashboardApp() {
                     variant="outline"
                     onClick={() => {
                       dirty.current = true;
+                      setCustomerFilter('');
                       setData((d) => ({
                         ...d,
                         customers: [
@@ -1253,7 +1313,7 @@ export default function DashboardApp() {
                   </Button>
                 </div>
                 <div className="customer-grid">
-                  {data.customers.map((customer) => (
+                  {filteredCustomers.map((customer) => (
                     <div className="customer-card" key={customer.id}>
                       <label className="field-label">
                         ลูกค้า
@@ -1379,10 +1439,14 @@ export default function DashboardApp() {
                     </p>
                     {duplicates.size > 0 && (
                       <p role="alert" className="duplicate-warning">
-                        ชื่อซ้ำกัน: {data.players
-                          .filter((p, i, all) =>
-                            duplicates.has(nameKey(p.name)) &&
-                            all.findIndex((q) => nameKey(q.name) === nameKey(p.name)) === i,
+                        ชื่อซ้ำกัน:{' '}
+                        {data.players
+                          .filter(
+                            (p, i, all) =>
+                              duplicates.has(nameKey(p.name)) &&
+                              all.findIndex(
+                                (q) => nameKey(q.name) === nameKey(p.name),
+                              ) === i,
                           )
                           .map((p) => p.name.trim())
                           .join(', ')}{' '}
@@ -1439,7 +1503,9 @@ export default function DashboardApp() {
                             <Input
                               readOnly={!access.canManageKpi}
                               value={p.name}
-                              aria-invalid={duplicates.has(nameKey(p.name)) || undefined}
+                              aria-invalid={
+                                duplicates.has(nameKey(p.name)) || undefined
+                              }
                               className={
                                 duplicates.has(nameKey(p.name))
                                   ? 'duplicate-name'
